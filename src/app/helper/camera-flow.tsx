@@ -1,0 +1,13 @@
+export const FLOW = {
+    "DOCUMENT_FRONT": "document-front",
+    "DOCUMENT_BACK": "document-back",
+    "SELFIE_CAPTURE": "selfie-capture",
+    "COMPLETE": "complete"
+};
+
+export const DOCUMENT_CAMERA_FLOW = {
+    "passport": { "DOCUMENT_FRONT": "DOCUMENT_FRONT", "SELFIE_CAPTURE": "SELFIE_CAPTURE", "COMPLETE": "COMPLETE" },
+    "drivers-licence": { "DOCUMENT_FRONT": "DOCUMENT_FRONT", "DOCUMENT_BACK": "DOCUMENT_BACK", "SELFIE_CAPTURE": "SELFIE_CAPTURE", "COMPLETE": "COMPLETE" },
+    "national-id": { "DOCUMENT_FRONT": "DOCUMENT_FRONT", "DOCUMENT_BACK": "DOCUMENT_BACK", "SELFIE_CAPTURE": "SELFIE_CAPTURE", "COMPLETE": "COMPLETE" },
+
+}
