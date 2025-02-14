@@ -23,7 +23,7 @@ const VerificationConfirm = () => {
                 <div className="text-center space-y-4">
                     <h1 className="text-2xl font-semibold text-gray-600">What you can expect next</h1>
                     <p className="text-gray-600 max-w-sm mx-auto">
-                        You will need to provide your ID and a selfie. It's a fast, secure process trusted by millions of users worldwide.
+                        You will need to provide your ID and a selfie. It&apos;s a fast, secure process trusted by millions of users worldwide.
                     </p>
                 </div>
 

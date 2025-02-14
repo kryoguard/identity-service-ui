@@ -36,7 +36,7 @@ const processOldPassportData = (text: string): PassportData => {
 
     console.log("detect old passport");
 
-    var textSplit = text.split('\n');
+    let textSplit = text.split('\n');
     try {
         for (let i = 0; i < textSplit.length; i++) {
             if (i == 1) {
@@ -58,7 +58,7 @@ const processOldPassportData = (text: string): PassportData => {
                 data.previousPassportNumber = textSplit[i].trim();
             } */
             else if (i == 18) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfBirth = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             } else if (i == 21) {
                 data.gender = textSplit[i].trim();
@@ -66,7 +66,7 @@ const processOldPassportData = (text: string): PassportData => {
                 if (textSplit[i].trim().length == 1) {
                     passportData.gender = textSplit[i].trim();
                 } else {
-                    var genderPOB = textSplit[i].trim().split(' ');
+                    const genderPOB = textSplit[i].trim().split(' ');
                     passportData.gender = genderPOB[0].trim();
                     passportData.placeOfBirth = genderPOB[1].trim();
                     textSplit = insertAt(textSplit, '-', i + 1);
@@ -78,10 +78,10 @@ const processOldPassportData = (text: string): PassportData => {
             } else if (i === 23) {
                 passportData.authority = textSplit[i].trim();
             } else if (i == 26) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfIssue = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             } else if (i == 28) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfExpiry = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             }
         }
@@ -89,7 +89,7 @@ const processOldPassportData = (text: string): PassportData => {
         console.error(error);
     }
 
-    let isValid = validateNGPassportData(passportData);
+    const isValid = validateNGPassportData(passportData);
     passportData.status.code = isValid ? 0 : 1;
     passportData.status.message = isValid ? "success" : "invalid data";
     passportData.status.nextStep = isValid ? flow["SELFIE_CAPTURE"] : flow["DOCUMENT_FRONT"];
@@ -100,7 +100,7 @@ const processOldPassportData = (text: string): PassportData => {
 const processNewPassportData = (text: string): PassportData => {
     const passportData: PassportData = { ...data };
 
-    var textSplit = text.split('\n');
+    let textSplit = text.split('\n');
     try {
         for (let i = 0; i < textSplit.length; i++) {
             if (i == 1) {
@@ -120,7 +120,7 @@ const processNewPassportData = (text: string): PassportData => {
             } else if (i == 15) {
                 passportData.previousPassportNumber = textSplit[i].trim();
             } else if (i == 18) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfBirth = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             } else if (i == 19) {
                 passportData.nin = textSplit[i].trim();
@@ -128,7 +128,7 @@ const processNewPassportData = (text: string): PassportData => {
                 if (textSplit[i].trim().length == 1) {
                     passportData.gender = textSplit[i].trim();
                 } else {
-                    var genderPOB = textSplit[i].trim().split(' ');
+                    const genderPOB = textSplit[i].trim().split(' ');
                     passportData.gender = genderPOB[0].trim();
                     passportData.placeOfBirth = genderPOB[1].trim();
                     textSplit = insertAt(textSplit, '-', i + 1);
@@ -138,12 +138,12 @@ const processNewPassportData = (text: string): PassportData => {
             } else if (i == 22) {
                 passportData.placeOfBirth = textSplit[i].trim();
             } else if (i == 25) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfIssue = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             } else if (i == 26) {
                 passportData.authority = textSplit[i].trim();
             } else if (i == 29) {
-                var dateSplit = textSplit[i].trim().split('/');
+                const dateSplit = textSplit[i].trim().split('/');
                 passportData.dateOfExpiry = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
             }
         }
@@ -151,7 +151,7 @@ const processNewPassportData = (text: string): PassportData => {
         console.error(error);
     }
 
-    let isValid = validateNGPassportData(passportData);
+    const isValid = validateNGPassportData(passportData);
     passportData.status.code = isValid ? 0 : 1;
     passportData.status.message = isValid ? "success" : "invalid data";
     passportData.status.nextStep = isValid ? flow["SELFIE_CAPTURE"] : flow["DOCUMENT_FRONT"];
@@ -159,7 +159,7 @@ const processNewPassportData = (text: string): PassportData => {
 };
 
 const detectOldPassport = (text: string): boolean => {
-    var textSplit = text.split('\n');
+    const textSplit = text.split('\n');
     let result = false;
 
     try {
@@ -171,7 +171,7 @@ const detectOldPassport = (text: string): boolean => {
 }
 
 interface InsertAt {
-    (array: any[], element: any, position: number): any[];
+    <T>(array: T[], element: T, position: number): T[];
 }
 
 const insertAt: InsertAt = (array, element, position) => {

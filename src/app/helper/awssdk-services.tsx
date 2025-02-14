@@ -1,13 +1,13 @@
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { TextractClient, AnalyzeDocumentCommand } from "@aws-sdk/client-textract";
-import { processNGData, validateNGPassportData } from "../validation/ng/nigerian-passport";
+import { processNGData } from "../validation/ng/nigerian-passport";
 import countries from "../countries.json";
 import { BaseData, Data } from "../validation/data-interface";
 import { DetectFacesCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
 
 const awsConfig = {
-    region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-    identityPoolId: process.env.AWS_USER_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
+    region: process.env.DEFAULT_AWS_REGION || 'us-east-1',
+    identityPoolId: process.env.USER_AWS_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
 };
 
 interface TextractConfig {
@@ -21,12 +21,7 @@ interface TextractResponse {
 }
 
 interface FaceDetectResponse extends BaseData {
-    faceDetails: any;
-}
-
-interface Relationship {
-    Type: string;
-    Ids: string[];
+    faceDetails: unknown;
 }
 
 const createTextractClient = (config: TextractConfig): TextractClient => {
@@ -52,7 +47,7 @@ const createRekognitionClient = (config: TextractConfig): RekognitionClient => {
 };
 
 const extractCountryData = (data: string): string => {
-    var countryName = '';
+    let countryName = '';
     countries.forEach(country => {
         if (data.toLowerCase().includes(country.name.toLowerCase())) {
             countryName = country.name;
@@ -72,7 +67,7 @@ export const detectFace = async (buffer: Uint8Array): Promise<FaceDetectResponse
         Attributes: ["ALL"]
     });
 
-    let data: FaceDetectResponse = {
+    const data: FaceDetectResponse = {
         faceDetails: null,
         status: {
             code: 1,
@@ -87,23 +82,23 @@ export const detectFace = async (buffer: Uint8Array): Promise<FaceDetectResponse
         if (response.FaceDetails && response.FaceDetails.length > 0) {
             data.faceDetails = response.FaceDetails[0];
 
-            if (data.faceDetails.Confidence < 80 || data.faceDetails.FaceOccluded.Value) {
+            const faceDetails = data.faceDetails as { Confidence: number; FaceOccluded: { Value: boolean }; EyesOpen: { Value: boolean }; MouthOpen: { Value: boolean }; Eyeglasses: { Value: boolean }; Sunglasses: { Value: boolean } };
+            if (faceDetails.Confidence < 80 || faceDetails.FaceOccluded.Value) {
                 data.status.message = 'Face not detected or covered. Make sure your face is visible in the image';
 
                 return data;
             }
-
-            if (!data.faceDetails.EyesOpen.Value) {
+            if (!faceDetails.EyesOpen.Value) {
                 data.status.message = 'Make sure your eyes are open in the image';
                 return data;
             }
-
-            if (data.faceDetails.MouthOpen.Value) {
+            if (faceDetails.MouthOpen.Value) {
                 data.status.message = 'Make sure your mouth is closed in the image';
                 return data;
             }
 
-            if (data.faceDetails.Eyeglasses.Value || data.faceDetails.Sunglasses.Value) {
+            const faceAttributes = data.faceDetails as { Eyeglasses: { Value: boolean }; Sunglasses: { Value: boolean } };
+            if (faceAttributes.Eyeglasses.Value || faceAttributes.Sunglasses.Value) {
                 data.status.message = 'Make sure you are not wearing glasses or sunglasses in the image';
                 return data;
             }

@@ -1,7 +1,6 @@
 "use client"
 
 import { QRCodeSVG } from 'qrcode.react';
-import { useState } from 'react';
 
 const QRCodeGenerator = ({ 
     value = 'https://example.com',

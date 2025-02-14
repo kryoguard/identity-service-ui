@@ -1,9 +1,7 @@
-import React, { use, useEffect, useRef, useState } from 'react';
-import { Camera, Play, Square, X, Check } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import KryoLogo from '../KryoLogo';
 // import { createWorker, PSM } from 'tesseract.js';
 import { analyzeWithTextract, detectFace } from '../helper/awssdk-services';
-import AnimatedShield from '../helper/AnimatedShield';
 import InvalidDocument from './errors/invalid-document';
 import CameraUI from './camera-ui';
 
@@ -18,59 +16,14 @@ const DocumentCapture = () => {
     const [hasError, setHasError] = useState(false);
     const [isSelfie, setIsSelfie] = useState(false);
     const [capturedImageStr, setCapturedImage] = useState('');
-    const [selfieImages, setSelfieImages] = useState<Uint8Array>(new Uint8Array());
-    const [documentImages, setDocumentImages] = useState<Uint8Array>(new Uint8Array());
+    // const [selfieImages, setSelfieImages] = useState<Uint8Array>(new Uint8Array());
+    // const [documentImages, setDocumentImages] = useState<Uint8Array>(new Uint8Array());
     const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
     const ws_url = process.env.WS_URL || 'wss://localhost:8443/video-stream';
-    const api_base_url = process.env.NEXT_PUBLIC_URL || 'https://localhost:3000';
+    // const api_base_url = process.env.NEXT_PUBLIC_URL || 'https://localhost:3000';
 
-    useEffect(() => {
-        startStreaming();
-        setIsProcessing(false);
-
-        // Cleanup function to stop everything when component unmounts
-        return () => {
-            if (mediaRecorderRef.current) {
-                mediaRecorderRef.current.stop();
-            }
-            if (wsRef.current) {
-                wsRef.current.close(1000, 'Component unmounting'); // Clean closure
-            }
-            if (videoRef.current?.srcObject) {
-                const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-                tracks.forEach(track => track.stop());
-                videoRef.current.srcObject = null;
-            }
-        };
-    }, [facingMode]);
-
-    const toggleCamera = async () => {
-        // Stop current stream
-        if (videoRef.current?.srcObject) {
-            const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-            tracks.forEach(track => track.stop());
-        }
-
-        setIsSelfie(!isSelfie);
-        setFacingMode(facingMode === 'environment' ? 'user' : 'environment');
-
-        // Start new stream
-        const newStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: facingMode,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: true
-        });
-
-        if (videoRef.current) {
-            videoRef.current.srcObject = newStream;
-        }
-    };
-
-    const connectWebSocket = () => {
+    const connectWebSocket = useCallback(() => {
         try {
             wsRef.current = new WebSocket(ws_url);
 
@@ -117,9 +70,9 @@ const DocumentCapture = () => {
             console.error('WebSocket connection error:', err);
             setError('Failed to establish connection');
         }
-    };
+    }, [ws_url]);
 
-    const startStreaming = async () => {
+    const startStreaming = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -129,13 +82,13 @@ const DocumentCapture = () => {
                 },
                 audio: true
             });
-    
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 // Only connect WebSocket after we have the stream
                 connectWebSocket();
             }
-    
+
         } catch (err) {
             if (err instanceof Error) {
                 setError('Error accessing camera: ' + err.message);
@@ -143,8 +96,59 @@ const DocumentCapture = () => {
                 setError('Error accessing camera');
             }
         }
+    }, [facingMode, connectWebSocket]);
+
+    useEffect(() => {
+        startStreaming();
+        setIsProcessing(false);
+
+        console.log('isRecording:', isRecording);
+
+        // Cleanup function to stop everything when component unmounts
+        return () => {
+            if (mediaRecorderRef.current) {
+                mediaRecorderRef.current.stop();
+            }
+            if (wsRef.current) {
+                wsRef.current.close(1000, 'Component unmounting'); // Clean closure
+            }
+            const videoElement = videoRef.current;
+            if (videoElement) {
+                const srcObject = videoElement.srcObject;
+                if (srcObject) {
+                    const tracks = (srcObject as MediaStream).getTracks();
+                    tracks.forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                }
+            }
+        };
+    }, [facingMode, isRecording, startStreaming]);
+
+    const toggleCamera = async () => {
+        // Stop current stream
+        if (videoRef.current?.srcObject) {
+            const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+            tracks.forEach(track => track.stop());
+        }
+
+        setIsSelfie(!isSelfie);
+        setFacingMode(facingMode === 'environment' ? 'user' : 'environment');
+
+        // Start new stream
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: facingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: true
+        });
+
+        if (videoRef.current) {
+            videoRef.current.srcObject = newStream;
+        }
     };
-    
+
     const reset = () => {
         setError('');
         setHasError(false);
@@ -218,7 +222,7 @@ const DocumentCapture = () => {
             });
 
             if (!isSelfie) {
-                setSelfieImages(imageBytes);
+                // setSelfieImages(imageBytes);
 
                 // Process with Textract
                 const result = await analyzeWithTextract(imageBytes);
@@ -243,9 +247,9 @@ const DocumentCapture = () => {
                     stopStreaming();
                 }
             } else {//selfie
-                setDocumentImages(imageBytes);
+                // setDocumentImages(imageBytes);
 
-                let faceData = await detectFace(imageBytes);
+                const faceData = await detectFace(imageBytes);
                 console.log('faceData', faceData);
 
                 if (faceData.status.code === 0) {

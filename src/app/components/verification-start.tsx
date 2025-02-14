@@ -32,7 +32,7 @@ export const VerificationStart = ({ currentSession }: { currentSession: string |
                 </div>
 
                 {/* Title */}
-                <h1 className="text-2xl sm:text-3xl font-semibold text-center text-gray-900">Let's complete your verification</h1>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-center text-gray-900">Let&apos;s complete your verification</h1>
 
                 {/* Requirements */}
                 <div className="bg-blue-50 p-3 sm:p-4 rounded-lg space-y-3 sm:space-y-4 mx-auto">
@@ -97,7 +97,7 @@ export const VerificationStart = ({ currentSession }: { currentSession: string |
                 {/* Footer - Smaller text on mobile */}
                 <div className="space-y-2 text-center text-xs sm:text-sm">
                     <p className="text-gray-600">
-                        Learn more about how your personal data is processed in KryoGuard's Privacy Notice.
+                        Learn more about how your personal data is processed in KryoGuard&apos;s Privacy Notice.
                     </p>
                     <p className="text-gray-600">
                         Smartphone not available? Proceed with your current device.
