@@ -1,5 +1,6 @@
 import KryoLogo from "@/app/KryoLogo";
 import { Check, X } from "lucide-react";
+import Image from "next/image";
 
 interface InvalidDocumentProps {
     capturedImage: string;
@@ -33,7 +34,7 @@ const InvalidDocument: React.FC<InvalidDocumentProps> = ({ capturedImage, reset,
 
             <div className="flex flex-col items-center space-y-4 p-4">
                 <div className="relative w-full max-w-2xl aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    <img
+                    <Image
                         src={capturedImage}
                         alt="Captured"
                         className="w-full h-full object-cover"

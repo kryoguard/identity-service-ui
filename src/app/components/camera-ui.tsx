@@ -42,10 +42,10 @@ const CameraUI: React.FC<CameraUIProps> = ({
             {/* Instructions - Desktop Only */}
             <div className="hidden sm:block text-center space-y-2 mb-4">
                 <h1 className="text-2xl font-semibold text-gray-700">
-                    Take a picture of your document's photo page
+                    Take a picture of your document&apos;s photo page
                 </h1>
                 <p className="text-gray-600 max-w-md mx-auto">
-                    Please use any of these: passport, ID card, driver's license, or residence permit.
+                    Please use any of these: passport, ID card, driver&apos;s license, or residence permit.
                 </p>
             </div>
 
