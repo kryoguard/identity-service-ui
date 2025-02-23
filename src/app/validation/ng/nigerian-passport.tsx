@@ -121,7 +121,7 @@ const processNewPassportData = (text: string): PassportData => {
                 passportData.previousPassportNumber = textSplit[i].trim();
             } else if (i == 18) {
                 const dateSplit = textSplit[i].trim().split('/');
-                passportData.dateOfBirth = dateSplit[0].trim() + ' ' + dateSplit[1].trim().split(' ')[1].trim();
+                passportData.dateOfBirth = dateSplit[0]?.trim() + ' ' + dateSplit[1]?.trim().split(' ')[1]?.trim();
             } else if (i == 19) {
                 passportData.nin = textSplit[i].trim();
             } else if (i == 21) {

@@ -6,8 +6,8 @@ import { BaseData, Data } from "../validation/data-interface";
 import { DetectFacesCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
 
 const awsConfig = {
-    region: process.env.DEFAULT_AWS_REGION || 'us-east-1',
-    identityPoolId: process.env.USER_AWS_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
+    region: process.env.NEXT_PUBLIC_DEFAULT_AWS_REGION || 'us-east-1',
+    identityPoolId: process.env.NEXT_PUBLIC_USER_AWS_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
 };
 
 interface TextractConfig {
@@ -143,7 +143,7 @@ export const analyzeWithTextract = async (imageBytes: Uint8Array): Promise<Textr
                     fullText += block.Text + '\n';
                 }
             });
-            console.log('fullText:', fullText);
+            
             const country = extractCountryData(fullText);
             try {
                 switch (country) {
