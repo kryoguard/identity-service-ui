@@ -3,7 +3,6 @@ import KryoLogo from '../KryoLogo';
 import { analyzeWithTextract, detectFace } from '../helper/awssdk-services';
 import InvalidDocument from './errors/invalid-document';
 import CameraUI from './camera-ui';
-import { w3cwebsocket as WebSocket } from 'websocket';
 
 const DocumentCapture = ({ token }: { token: string }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -24,24 +23,39 @@ const DocumentCapture = ({ token }: { token: string }) => {
 
     const connectWebSocket = useCallback(() => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            console.log('WebSocket already connected');
-            console.log('recording state', mediaRecorderRef?.current?.state);
+            console.debug('WebSocket already connected');
+            console.debug('recording state', mediaRecorderRef?.current?.state);
             return;
         }
 
-        wsRef.current = new WebSocket(ws_url, undefined, undefined, {
-            Authorization: `Bearer ${token}`,
-          });
+        wsRef.current = new WebSocket(ws_url);
 
         wsRef.current.onopen = () => {
-            console.log('WebSocket connected');
-            if (videoRef.current?.srcObject) {
-                startRecording(videoRef.current);
+            console.debug('WebSocket connected');
+
+            if (token) {
+                wsRef.current?.send(JSON.stringify({ action: 'authenticate', token: token }));
+            } else {
+                console.error('No token provided for authentication');
+                setError('No token provided');
+                wsRef.current?.close(1000, 'No token');
             }
         };
 
         wsRef.current.onmessage = (event) => {
-            console.log('WebSocket message:', event.data);
+            console.debug('WebSocket raw message:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                if (data.status === 'success' && data.message === 'authenticated') {
+                    console.debug('WebSocket token aunthenticated');
+                    if (videoRef.current?.srcObject) {
+                        startRecording(videoRef.current);
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+                return;
+            }
         };
 
         wsRef.current.onerror = (error) => {
@@ -50,11 +64,11 @@ const DocumentCapture = ({ token }: { token: string }) => {
         };
 
         wsRef.current.onclose = (event) => {
-            console.log('WebSocket closed:', event.code, event.reason);
+            console.debug('WebSocket closed:', event.code, event.reason);
             setIsRecording(false);
             if (!event.wasClean) {
-                console.log('Attempting to reconnect...');
-                setTimeout(connectWebSocket, 3000); // Reconnect after 3s
+                console.debug('Attempting to reconnect...');
+                setTimeout(connectWebSocket, 3000);  // Reconnect after 3s
             }
         };
     }, [ws_url]);
@@ -65,14 +79,17 @@ const DocumentCapture = ({ token }: { token: string }) => {
                 video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: true,
             });
-
+            console.debug('Media stream obtained:', stream);
+            console.debug('Stream tracks:', stream.getTracks());
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 connectWebSocket(); // Connect WS after stream is ready
             }
         } catch (err) {
+            console.error('Error accessing camera:', err);
             setError('Error accessing camera: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
+
     }, [facingMode, connectWebSocket]);
 
     useEffect(() => {
@@ -123,33 +140,41 @@ const DocumentCapture = ({ token }: { token: string }) => {
         await startStreaming(); // Restart stream with new facing mode
     }, [facingMode, isSelfie, startStreaming]);
     const startRecording = (currentVideoRef: HTMLVideoElement) => {
+        if (!currentVideoRef.srcObject) {
+            console.error('No video stream available for recording');
+            return;
+        }
         mediaRecorderRef.current = new MediaRecorder(currentVideoRef.srcObject as MediaStream, {
             mimeType: 'video/webm;codecs=vp8,opus',
         });
 
         mediaRecorderRef.current.ondataavailable = (event) => {
+            console.debug('Data available:', event.data.size, 'bytes, WebSocket state:', wsRef.current?.readyState);
             if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(event.data);
+                console.debug('Sent video chunk to WebSocket');
+            } else {
+                console.warn('Skipping send: data size or WebSocket state invalid');
             }
         };
 
         mediaRecorderRef.current.onstop = () => {
-            console.log('MediaRecorder stopped');
+            console.debug('MediaRecorder stopped');
             setIsRecording(false);
         };
 
         mediaRecorderRef.current.start(1000); // Send chunks every 1s
         setIsRecording(true);
-        console.log('Recording started', isRecording);
+        console.debug('Recording started', isRecording);
     }
     const stopRecording = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
-            console.info('MediaRecorder stopped manually');
+            console.debug('MediaRecorder stopped manually');
         }
         if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
             wsRef.current.close(1000, 'Manual stop');
-            console.info('WebSocket closed manually');
+            console.debug('WebSocket closed manually');
         }
         setIsRecording(false);
     };
@@ -196,7 +221,7 @@ const DocumentCapture = ({ token }: { token: string }) => {
 
             if (!isSelfie) {
                 const result = await analyzeWithTextract(imageBytes);
-                console.log('Textract result:', result);
+                console.debug('Textract result:', result);
 
                 if (result.data.status.code === 0) {
                     if (result.data.status.nextStep === 'SELFIE_CAPTURE') {
@@ -209,7 +234,7 @@ const DocumentCapture = ({ token }: { token: string }) => {
                 }
             } else {
                 const faceData = await detectFace(imageBytes);
-                console.log('Face detection result:', faceData);
+                console.debug('Face detection result:', faceData);
 
                 if (faceData.status.code !== 0) {
                     setError(faceData.status.message);
