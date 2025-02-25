@@ -37,6 +37,27 @@ const DocumentCapture: React.FC<{
             };
         }, []);
 
+        const getSupportedMimeType = useCallback(() => {
+            const mimeTypes = [
+                'video/webm;codecs=vp8,opus', // Preferred for broad support
+                'video/webm;codecs=vp9,opus',
+                'video/webm;codecs=h264,opus', // H.264 fallback
+                'video/mp4;codecs=h264,aac',   // iOS/Safari compatible
+                'video/mp4',                   // Generic MP4 fallback
+                'video/webm',                  // Generic WebM fallback
+            ];
+
+            for (const mimeType of mimeTypes) {
+                if (MediaRecorder.isTypeSupported(mimeType)) {
+                    console.debug(`Selected supported mimeType: ${mimeType}`);
+                    return mimeType;
+                }
+            }
+
+            console.error('No supported mimeType found for MediaRecorder');
+            return null;
+        }, []);
+
         const startRecording = useCallback(
             (currentVideoRef: HTMLVideoElement) => {
                 if (!currentVideoRef.srcObject) {
@@ -50,28 +71,39 @@ const DocumentCapture: React.FC<{
                     return;
                 }
 
-                mediaRecorderRef.current = new MediaRecorder(currentVideoRef.srcObject as MediaStream, {
-                    mimeType: 'video/webm;codecs=vp8,opus',
-                });
+                const mimeType = getSupportedMimeType();
+                if (!mimeType) {
+                    setError('No supported video format available for recording on this device');
+                    return;
+                }
 
-                mediaRecorderRef.current.ondataavailable = (event) => {
-                    console.debug('Data available:', event.data.size, 'bytes, WebSocket state:', wsRef.current?.readyState);
-                    if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-                        wsRef.current.send(event.data);
-                        console.debug('Sent video chunk to WebSocket');
-                    } else {
-                        console.warn('Skipping send: data size or WebSocket state invalid');
-                    }
-                };
+                try {
+                    mediaRecorderRef.current = new MediaRecorder(currentVideoRef.srcObject as MediaStream, {
+                        mimeType,
+                    });
 
-                mediaRecorderRef.current.onstop = () => {
-                    console.debug('MediaRecorder stopped');
-                };
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        console.debug('Data available:', event.data.size, 'bytes, WebSocket state:', wsRef.current?.readyState);
+                        if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(event.data);
+                            console.debug('Sent video chunk to WebSocket');
+                        } else {
+                            console.warn('Skipping send: data size or WebSocket state invalid');
+                        }
+                    };
 
-                mediaRecorderRef.current.start(1000); // 1-second chunks
-                console.debug('Recording started');
+                    mediaRecorderRef.current.onstop = () => {
+                        console.debug('MediaRecorder stopped');
+                    };
+
+                    mediaRecorderRef.current.start(1000); // 1-second chunks
+                    console.debug('Recording started with mimeType:', mimeType);
+                } catch (err) {
+                    console.error('Failed to start MediaRecorder:', err);
+                    setError('Error starting recording: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                }
             },
-            [wsRef, wsReady]
+            [wsRef, wsReady, getSupportedMimeType]
         );
 
         const startStreaming = useCallback(async () => {
@@ -100,7 +132,6 @@ const DocumentCapture: React.FC<{
                         }
                         videoRef.current.srcObject = stream;
                         setIsProcessing(false);
-                        // Start recording immediately after stream is set
                         if (wsReady && videoRef.current) {
                             startRecording(videoRef.current);
                         }
