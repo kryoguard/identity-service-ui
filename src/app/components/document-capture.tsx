@@ -24,20 +24,14 @@ const DocumentCapture: React.FC<{
         const isStreaming = useRef(false);
         const streamingPromise = useRef<Promise<void> | null>(null);
         const hasStarted = useRef(false);
-        const [error, setError] = useState('');
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [hasError, setHasError] = useState(false);
-        const [capturedImageStr, setCapturedImage] = useState('');
+        const [error, setError] = useState<string>('');
+        const [isProcessing, setIsProcessing] = useState<boolean>(false);
+        const [hasError, setHasError] = useState<boolean>(false);
+        const [capturedImageStr, setCapturedImage] = useState<string>('');
         const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
-        useEffect(() => {
-            console.debug('DocumentCapture mounted, time:', Date.now());
-            return () => {
-                console.debug('DocumentCapture unmounted, time:', Date.now());
-            };
-        }, []);
-
-        const getSupportedMimeType = useCallback(() => {
+        // Hoisted, type-safe functions
+        function getSupportedMimeType(): string | null {
             const mimeTypes = [
                 'video/webm;codecs=vp8,opus',
                 'video/webm;codecs=vp9,opus',
@@ -56,64 +50,85 @@ const DocumentCapture: React.FC<{
 
             console.error('No supported mimeType found for MediaRecorder');
             return null;
-        }, []);
+        }
 
-        const startRecording = useCallback(
-            (currentVideoRef: HTMLVideoElement) => {
-                if (!currentVideoRef.srcObject) {
-                    console.error('No video stream available for recording');
-                    setError('No video stream available');
-                    return;
-                }
-                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !wsReady) {
-                    console.error('WebSocket not ready for recording');
-                    setError('Connection not ready. Please try again.');
-                    return;
-                }
+        function stopRecording() {
+            if (mediaRecorderRef.current?.state !== 'inactive') {
+                mediaRecorderRef.current?.stop();
+                console.debug('MediaRecorder stopped manually');
+            }
+            if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+                wsRef.current.close(1000, 'Recording stopped');
+                wsRef.current = null;
+            }
+        }
 
-                const mimeType = getSupportedMimeType();
-                if (!mimeType) {
-                    setError('No supported video format available for recording on this device');
-                    return;
-                }
+        function stopStreaming() {
+            if (mediaRecorderRef.current?.state !== 'inactive') {
+                mediaRecorderRef.current?.stop();
+            }
+            if (videoRef.current?.srcObject) {
+                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+            }
+            isStreaming.current = false;
+            streamingPromise.current = null;
+            console.debug('Stopped streaming, isStreaming reset, time:', Date.now());
+        }
 
-                try {
-                    mediaRecorderRef.current = new MediaRecorder(currentVideoRef.srcObject as MediaStream, {
-                        mimeType,
-                    });
+        function startRecording(currentVideoRef: HTMLVideoElement, restartStream: () => Promise<void>) {
+            if (!currentVideoRef.srcObject) {
+                console.error('No video stream available for recording');
+                setError('No video stream available');
+                return;
+            }
+            if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !wsReady) {
+                console.error('WebSocket not ready for recording');
+                setError('Connection not ready. Please try again.');
+                return;
+            }
 
-                    mediaRecorderRef.current.ondataavailable = (event) => {
-                        console.debug('Data available:', event.data.size, 'bytes, WebSocket state:', wsRef.current?.readyState);
-                        if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-                            wsRef.current.send(event.data);
-                            console.debug('Sent video chunk to WebSocket');
-                        } else {
-                            console.warn('Skipping send: data size or WebSocket state invalid');
-                            if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing) {
-                                // Reconnect if WebSocket closed unexpectedly
-                                console.debug('WebSocket closed unexpectedly, attempting to reconnect');
-                                connectWebSocket().then(() => {
-                                    if (videoRef.current) startRecording(videoRef.current);
-                                });
-                            }
+            const mimeType = getSupportedMimeType();
+            if (!mimeType) {
+                setError('No supported video format available for recording on this device');
+                return;
+            }
+
+            try {
+                mediaRecorderRef.current = new MediaRecorder(currentVideoRef.srcObject as MediaStream, {
+                    mimeType,
+                });
+
+                mediaRecorderRef.current.ondataavailable = (event) => {
+                    console.debug('Data available:', event.data.size, 'bytes, WebSocket state:', wsRef.current?.readyState);
+                    if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(event.data);
+                        console.debug('Sent video chunk to WebSocket');
+                    } else {
+                        console.warn('Skipping send: data size or WebSocket state invalid');
+                        if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing) {
+                            console.debug('WebSocket closed unexpectedly, attempting to reconnect');
+                            connectWebSocket().then(() => {
+                                hasStarted.current = false; // Allow stream restart
+                                restartStream(); // Restart streaming and recording
+                            });
                         }
-                    };
+                    }
+                };
 
-                    mediaRecorderRef.current.onstop = () => {
-                        console.debug('MediaRecorder stopped');
-                    };
+                mediaRecorderRef.current.onstop = () => {
+                    console.debug('MediaRecorder stopped');
+                };
 
-                    mediaRecorderRef.current.start(500); // Reduced to 500ms for smaller chunks
-                    console.debug('Recording started with mimeType:', mimeType);
-                } catch (err) {
-                    console.error('Failed to start MediaRecorder:', err);
-                    setError('Error starting recording: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                }
-            },
-            [wsRef, wsReady, getSupportedMimeType, connectWebSocket, isProcessing]
-        );
+                mediaRecorderRef.current.start(250); // 250ms chunks
+                console.debug('Recording started with mimeType:', mimeType);
+            } catch (err) {
+                console.error('Failed to start MediaRecorder:', err);
+                setError('Error starting recording: ' + (err instanceof Error ? err.message : 'Unknown error'));
+            }
+        }
 
-        const startStreaming = useCallback(async () => {
+        async function startStreaming() {
             console.debug('Attempting to start stream, isStreaming:', isStreaming.current, 'hasStarted:', hasStarted.current, 'time:', Date.now());
             if (isStreaming.current || hasStarted.current) {
                 if (streamingPromise.current) {
@@ -140,7 +155,7 @@ const DocumentCapture: React.FC<{
                         videoRef.current.srcObject = stream;
                         setIsProcessing(false);
                         if (wsReady && videoRef.current) {
-                            startRecording(videoRef.current);
+                            startRecording(videoRef.current, startStreaming);
                         }
                     }
                 } catch (err) {
@@ -156,31 +171,7 @@ const DocumentCapture: React.FC<{
             await streamPromise;
             streamingPromise.current = null;
             console.debug('Stream completed, lock persists until stop, time:', Date.now());
-        }, [facingMode, wsReady, startRecording]);
-
-        const stopRecording = useCallback(() => {
-            if (mediaRecorderRef.current?.state !== 'inactive') {
-                mediaRecorderRef.current?.stop();
-                console.debug('MediaRecorder stopped manually');
-            }
-            if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-                wsRef.current.close(1000, 'Recording stopped');
-                wsRef.current = null;
-            }
-        }, [wsRef]);
-
-        const stopStreaming = useCallback(() => {
-            if (mediaRecorderRef.current?.state !== 'inactive') {
-                mediaRecorderRef.current?.stop();
-            }
-            if (videoRef.current?.srcObject) {
-                (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-                videoRef.current.srcObject = null;
-            }
-            isStreaming.current = false;
-            streamingPromise.current = null;
-            console.debug('Stopped streaming, isStreaming reset, time:', Date.now());
-        }, []);
+        }
 
         useEffect(() => {
             const timer = setTimeout(() => {
@@ -191,7 +182,7 @@ const DocumentCapture: React.FC<{
                 clearTimeout(timer);
                 stopStreaming();
             };
-        }, [startStreaming, stopStreaming]);
+        }, []); // No dependencies, functions are hoisted
 
         const toggleCamera = useCallback(async () => {
             stopStreaming();
@@ -207,7 +198,7 @@ const DocumentCapture: React.FC<{
             await connectWebSocket();
             await new Promise(resolve => setTimeout(resolve, 700));
             await startStreaming();
-        }, [facingMode, startStreaming, connectWebSocket, setIsSelfie, stopStreaming]);
+        }, [facingMode, connectWebSocket, setIsSelfie]); // Stable dependencies
 
         const reset = useCallback(() => {
             setError('');
@@ -215,7 +206,7 @@ const DocumentCapture: React.FC<{
             setIsProcessing(false);
             stopStreaming();
             startStreaming();
-        }, [startStreaming, stopStreaming]);
+        }, []); // No dependencies, functions are hoisted
 
         const captureAndProcess = useCallback(async () => {
             if (!videoRef.current || !canvasRef.current) {
@@ -279,7 +270,7 @@ const DocumentCapture: React.FC<{
             } finally {
                 setIsProcessing(false);
             }
-        }, [isSelfie, stopRecording, toggleCamera]);
+        }, [isSelfie, toggleCamera]); // stopRecording removed, hoisted
 
         useEffect(() => {
             console.log('isSelfie updated to:', isSelfie);
