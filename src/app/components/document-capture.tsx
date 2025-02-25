@@ -39,12 +39,12 @@ const DocumentCapture: React.FC<{
 
         const getSupportedMimeType = useCallback(() => {
             const mimeTypes = [
-                'video/webm;codecs=vp8,opus', // Preferred for broad support
+                'video/webm;codecs=vp8,opus',
                 'video/webm;codecs=vp9,opus',
-                'video/webm;codecs=h264,opus', // H.264 fallback
-                'video/mp4;codecs=h264,aac',   // iOS/Safari compatible
-                'video/mp4',                   // Generic MP4 fallback
-                'video/webm',                  // Generic WebM fallback
+                'video/webm;codecs=h264,opus',
+                'video/mp4;codecs=h264,aac',
+                'video/mp4',
+                'video/webm',
             ];
 
             for (const mimeType of mimeTypes) {
@@ -89,6 +89,13 @@ const DocumentCapture: React.FC<{
                             console.debug('Sent video chunk to WebSocket');
                         } else {
                             console.warn('Skipping send: data size or WebSocket state invalid');
+                            if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing) {
+                                // Reconnect if WebSocket closed unexpectedly
+                                console.debug('WebSocket closed unexpectedly, attempting to reconnect');
+                                connectWebSocket().then(() => {
+                                    if (videoRef.current) startRecording(videoRef.current);
+                                });
+                            }
                         }
                     };
 
@@ -96,14 +103,14 @@ const DocumentCapture: React.FC<{
                         console.debug('MediaRecorder stopped');
                     };
 
-                    mediaRecorderRef.current.start(1000); // 1-second chunks
+                    mediaRecorderRef.current.start(500); // Reduced to 500ms for smaller chunks
                     console.debug('Recording started with mimeType:', mimeType);
                 } catch (err) {
                     console.error('Failed to start MediaRecorder:', err);
                     setError('Error starting recording: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 }
             },
-            [wsRef, wsReady, getSupportedMimeType]
+            [wsRef, wsReady, getSupportedMimeType, connectWebSocket, isProcessing]
         );
 
         const startStreaming = useCallback(async () => {
