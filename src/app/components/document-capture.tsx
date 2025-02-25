@@ -24,10 +24,12 @@ const DocumentCapture: React.FC<{
         const isStreaming = useRef(false);
         const streamingPromise = useRef<Promise<void> | null>(null);
         const hasStarted = useRef(false);
+        const capturedImageRef = useRef<string>(''); // Temporary storage for captured image
         const [error, setError] = useState<string>('');
         const [isProcessing, setIsProcessing] = useState<boolean>(false);
         const [hasError, setHasError] = useState<boolean>(false);
         const [capturedImageStr, setCapturedImage] = useState<string>('');
+
         const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
         useEffect(() => {
@@ -148,10 +150,27 @@ const DocumentCapture: React.FC<{
             hasStarted.current = true;
             const streamPromise = (async () => {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: { exact: newFacingMode || facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    const facing = newFacingMode || facingMode;
+                    let stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
                         audio: true,
                     });
+
+                    try {
+                        console.debug('Trying stream with facingMode:', facing);
+                        const videoTrack = stream.getVideoTracks()[0];
+                        console.debug('Active camera label:', videoTrack.label, 'constraints:', videoTrack.getSettings());
+                    } catch (err) {
+                        if (err instanceof OverconstrainedError) {
+                            console.debug('OverconstrainedError detected, retrying with relaxed constraints');
+                            stream = await navigator.mediaDevices.getUserMedia({
+                                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                                audio: true,
+                            });
+                        } else {
+                            throw err;
+                        }
+                    }
 
                     console.debug('Media stream obtained:', stream);
                     if (videoRef.current) {
@@ -160,7 +179,6 @@ const DocumentCapture: React.FC<{
                         }
                         videoRef.current.srcObject = stream;
                         setIsProcessing(false);
-                        // Log active camera for debugging
                         const videoTrack = stream.getVideoTracks()[0];
                         console.debug('Active camera label:', videoTrack.label, 'constraints:', videoTrack.getSettings());
                         if (wsReady && videoRef.current) {
@@ -207,13 +225,15 @@ const DocumentCapture: React.FC<{
 
             await connectWebSocket();
             await new Promise(resolve => setTimeout(resolve, 700));
-            await startStreaming(newFacingMode); // Pass newFacingMode directly
+            await startStreaming(newFacingMode);
         }, [facingMode, connectWebSocket, setIsSelfie]);
 
         const reset = useCallback(() => {
             setError('');
             setHasError(false);
             setIsProcessing(false);
+            setCapturedImage(''); // Reset captured image
+            capturedImageRef.current = ''; // Clear ref too
             stopStreaming();
             startStreaming();
         }, []);
@@ -226,7 +246,6 @@ const DocumentCapture: React.FC<{
 
             setIsProcessing(true);
             stopRecording();
-            setError('');
 
             try {
                 const { videoWidth, videoHeight } = videoRef.current;
@@ -237,7 +256,10 @@ const DocumentCapture: React.FC<{
                 if (!ctx) throw new Error('Failed to get canvas context');
 
                 ctx.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
-                setCapturedImage(canvasRef.current.toDataURL('image/png'));
+                const imageDataUrl = canvasRef.current.toDataURL('image/png');
+                capturedImageRef.current = imageDataUrl; // Store in ref immediately
+                setCapturedImage(imageDataUrl); // Update state
+                console.debug('Captured image set:', imageDataUrl.substring(0, 50) + '...');
 
                 const imageBytes = await new Promise<Uint8Array>((resolve, reject) => {
                     canvasRef.current?.toBlob(
@@ -275,6 +297,7 @@ const DocumentCapture: React.FC<{
                     }
                 }
             } catch (err) {
+                console.error('Error processing image:', err);
                 setError('Error processing image: ' + (err instanceof Error ? err.message : 'Unknown error'));
                 setHasError(true);
             } finally {
@@ -286,12 +309,19 @@ const DocumentCapture: React.FC<{
             console.log('isSelfie updated to:', isSelfie);
         }, [isSelfie]);
 
+        // Debug capturedImageStr in render
+        useEffect(() => {
+            if (hasError) {
+                console.debug('Rendering InvalidDocument with capturedImageStr:', capturedImageStr.substring(0, 50) + '...');
+            }
+        }, [hasError, capturedImageStr]);
+
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4">
                 <div className="bg-white rounded-lg w-full max-w-4xl mx-auto my-4 p-4 sm:p-6">
                     {hasError ? (
                         <InvalidDocument
-                            capturedImage={capturedImageStr}
+                            capturedImage={capturedImageStr || capturedImageRef.current} // Fallback to ref
                             reset={reset}
                             isSelfie={isSelfie}
                             erroMsg={error}
