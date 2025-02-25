@@ -52,7 +52,8 @@ export default function Home() {
                             console.debug('WebSocket token authenticated');
                             setWsReady(true);
                             setInvalidToken(false);
-                        } else {
+                        } else if(data.status === 'error' && data.message === 'authentication failed') {
+                            console.error('Invalid token provided');
                             setInvalidToken(true);
                         }
                     } catch (error) {
