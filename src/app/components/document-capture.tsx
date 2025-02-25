@@ -112,12 +112,11 @@ const DocumentCapture: React.FC<{
                         console.debug('Sent video chunk to WebSocket');
                     } else {
                         console.warn('Skipping send: data size or WebSocket state invalid');
-                        // Only reconnect if not processing (i.e., not a deliberate stop)
                         if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing && !hasError) {
                             console.debug('WebSocket closed unexpectedly, attempting to reconnect');
                             connectWebSocket().then(() => {
-                                hasStarted.current = false; // Allow stream restart
-                                restartStream(); // Restart streaming and recording
+                                hasStarted.current = false;
+                                restartStream();
                             });
                         }
                     }
@@ -135,7 +134,7 @@ const DocumentCapture: React.FC<{
             }
         }
 
-        async function startStreaming() {
+        async function startStreaming(newFacingMode?: 'environment' | 'user') {
             console.debug('Attempting to start stream, isStreaming:', isStreaming.current, 'hasStarted:', hasStarted.current, 'time:', Date.now());
             if (isStreaming.current || hasStarted.current) {
                 if (streamingPromise.current) {
@@ -150,7 +149,7 @@ const DocumentCapture: React.FC<{
             const streamPromise = (async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                        video: { facingMode: { exact: newFacingMode || facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
                         audio: true,
                     });
 
@@ -161,6 +160,9 @@ const DocumentCapture: React.FC<{
                         }
                         videoRef.current.srcObject = stream;
                         setIsProcessing(false);
+                        // Log active camera for debugging
+                        const videoTrack = stream.getVideoTracks()[0];
+                        console.debug('Active camera label:', videoTrack.label, 'constraints:', videoTrack.getSettings());
                         if (wsReady && videoRef.current) {
                             startRecording(videoRef.current, startStreaming);
                         }
@@ -168,6 +170,7 @@ const DocumentCapture: React.FC<{
                 } catch (err) {
                     console.error('Error accessing camera:', err);
                     setError('Error accessing camera: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                    setHasError(true);
                     isStreaming.current = false;
                     hasStarted.current = false;
                     throw err;
@@ -204,7 +207,7 @@ const DocumentCapture: React.FC<{
 
             await connectWebSocket();
             await new Promise(resolve => setTimeout(resolve, 700));
-            await startStreaming();
+            await startStreaming(newFacingMode); // Pass newFacingMode directly
         }, [facingMode, connectWebSocket, setIsSelfie]);
 
         const reset = useCallback(() => {
