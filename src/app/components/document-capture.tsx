@@ -30,7 +30,13 @@ const DocumentCapture: React.FC<{
         const [capturedImageStr, setCapturedImage] = useState<string>('');
         const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
-        // Hoisted, type-safe functions
+        useEffect(() => {
+            console.debug('DocumentCapture mounted, time:', Date.now());
+            return () => {
+                console.debug('DocumentCapture unmounted, time:', Date.now());
+            };
+        }, []);
+
         function getSupportedMimeType(): string | null {
             const mimeTypes = [
                 'video/webm;codecs=vp8,opus',
@@ -106,7 +112,8 @@ const DocumentCapture: React.FC<{
                         console.debug('Sent video chunk to WebSocket');
                     } else {
                         console.warn('Skipping send: data size or WebSocket state invalid');
-                        if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing) {
+                        // Only reconnect if not processing (i.e., not a deliberate stop)
+                        if (wsRef.current?.readyState !== WebSocket.OPEN && !isProcessing && !hasError) {
                             console.debug('WebSocket closed unexpectedly, attempting to reconnect');
                             connectWebSocket().then(() => {
                                 hasStarted.current = false; // Allow stream restart
@@ -182,7 +189,7 @@ const DocumentCapture: React.FC<{
                 clearTimeout(timer);
                 stopStreaming();
             };
-        }, []); // No dependencies, functions are hoisted
+        }, []);
 
         const toggleCamera = useCallback(async () => {
             stopStreaming();
@@ -198,7 +205,7 @@ const DocumentCapture: React.FC<{
             await connectWebSocket();
             await new Promise(resolve => setTimeout(resolve, 700));
             await startStreaming();
-        }, [facingMode, connectWebSocket, setIsSelfie]); // Stable dependencies
+        }, [facingMode, connectWebSocket, setIsSelfie]);
 
         const reset = useCallback(() => {
             setError('');
@@ -206,7 +213,7 @@ const DocumentCapture: React.FC<{
             setIsProcessing(false);
             stopStreaming();
             startStreaming();
-        }, []); // No dependencies, functions are hoisted
+        }, []);
 
         const captureAndProcess = useCallback(async () => {
             if (!videoRef.current || !canvasRef.current) {
@@ -270,7 +277,7 @@ const DocumentCapture: React.FC<{
             } finally {
                 setIsProcessing(false);
             }
-        }, [isSelfie, toggleCamera]); // stopRecording removed, hoisted
+        }, [isSelfie, toggleCamera]);
 
         useEffect(() => {
             console.log('isSelfie updated to:', isSelfie);
