@@ -1,6 +1,6 @@
 import React from "react";
 import { X, Camera } from "lucide-react";
-import AnimatedShield from "../helper/AnimatedShield";
+import AnimatedShield from "@/app/helper/animatedShield";
 
 interface CameraUIProps {
     videoRef: React.RefObject<HTMLVideoElement | null>;

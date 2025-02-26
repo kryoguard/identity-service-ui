@@ -1,26 +1,82 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { X, Smartphone, CreditCard } from 'lucide-react';
-import KryoLogo from "../KryoLogo";
-import QRCodeGenerator from "../helper/QRCodeGenerator";
-import QRCodeContainer from "../helper/QRContainer";
-import countries from "../countries.json";
+import QRCodeContainer from "@/app/helper/qrContainer";
+import { ComponentState, Country } from "@/app/helper/types/custom-types";
+import QRCodeGenerator from "@/app/helper/qrCodeGenerator";
+import KryoLogo from "@/app/assets/kryoLogo";
 
+// interface Locale {
+//     language: string;
+//     timeZone: string;
+//     languages: string[];
+//     region: string;
+// }
 
-export const VerificationStart = ({ currentSession }: { currentSession: string | null }) => {
-    currentSession = currentSession || 'NA';
-    const currentURL = process.env.NEXT_PUBLIC_URL + '/?v=' + currentSession;
-
-    console.log(currentURL);
-    const [phoneNumber, setPhoneNumber] = useState('');
+export const VerificationStart = ({ token, setNextComponent }: { token: string, setNextComponent: (component: ComponentState) => void }) => {
+    const [countries, setCountries] = useState<Country[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [selectedCountry, setSelectedCountry] = useState('Canada (+1)');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    // const [locale, setLocale] = useState<Locale>({
+    //     language: '',
+    //     timeZone: '',
+    //     languages: [],
+    //     region: ''
+    //   });
+
+    const currentURL = process.env.NEXT_PUBLIC_URL + '/v/' + token;
+    const idsm_url = process.env.NEXT_PUBLIC_IDSM_BASE_URL || 'http://localhost:8080';
+
+    // // Get primary language (e.g., 'en-US')
+    // const language = navigator.language;
+    
+    // // Get all languages in user's preference order
+    // const languages = navigator.languages;
+    
+    // // Get timezone (e.g., 'America/New_York')
+    // const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // // Get region from primary language
+    // const region = new Intl.Locale(language).region;
+
+    // setLocale({
+    //   language,
+    //   timeZone,
+    //   languages: [...languages],
+    //   region: region || ''
+    // });
+
+    // console.log('Languages:', locale);
+
+    useEffect(() => {
+        const fetchCountries = async () => {
+            try {
+                const response = await fetch(`${idsm_url}/v1/system/country`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                setCountries(data);
+            } catch (error) {
+                console.error('Error fetching countries:', error);
+                setError(error instanceof Error ? error.message : 'Failed to fetch countries');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCountries();
+    }, [idsm_url]);
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
             <div className="bg-white rounded-lg max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center pt-20">
+                <div className="flex justify-between items-center pt-5">
                     <div className="w-6 sm:w-8" /> {/* Spacer */}
                     <div className="flex items-center gap-2">
                         <span className="text-2xl sm:text-4xl font-semibold text-blue-500">KryoGuard</span>
@@ -75,11 +131,17 @@ export const VerificationStart = ({ currentSession }: { currentSession: string |
                             value={selectedCountry}
                             onChange={(e) => setSelectedCountry(e.target.value)}
                         >
-                            {countries.map((country) => (
-                                <option key={country.code} value={`${country.name} (${country.code})`}>
-                                    {country.name} ({country.code})
-                                </option>
-                            ))}
+                            {isLoading ? (
+                                <option>Loading countries...</option>
+                            ) : error ? (
+                                <option>Error loading countries</option>
+                            ) : (
+                                countries.map((country) => (
+                                    <option key={`${country.id}`} value={`${country.phoneCode}`}>
+                                        {country.name} ({country.phoneCode})
+                                    </option>
+                                ))
+                            )}
                         </select>
                         <input
                             type="tel"
@@ -99,9 +161,9 @@ export const VerificationStart = ({ currentSession }: { currentSession: string |
                     <p className="text-gray-600">
                         Learn more about how your personal data is processed in KryoGuard&apos;s Privacy Notice.
                     </p>
-                    <p className="text-gray-600">
+                    <Link href={'#'} className="text-gray-600" onClick={() => setNextComponent('confirm')}>
                         Smartphone not available? Proceed with your current device.
-                    </p>
+                    </Link>
                     <p className="text-gray-400 flex items-center justify-center gap-1">
                         Powered by KryoGuard <KryoLogo className="w-5 h-5 sm:w-5 sm:h-5" />
                     </p>

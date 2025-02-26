@@ -1,21 +1,5 @@
 import React, { useState } from 'react';
-
-interface AnimatedShieldProps {
-  size?: number;
-  backgroundColor?: string;
-  strokeColor?: string;
-  innerColor?: string;
-  centerColor?: string;
-  pulseSpeed?: string;
-  spinSpeed?: string;
-  glowIntensity?: string;
-  isAnimating?: boolean;
-  animationType?: 'pulse' | 'rotate' | 'bounce' | 'glow' | 'ripple';
-  isInteractive?: boolean;
-  isProcessing?: boolean;
-  onClick?: () => void;
-  className?: string;
-}
+import { AnimatedShieldProps } from '@/app/helper/types/custom-types';
 
 const AnimatedShield: React.FC<AnimatedShieldProps> = ({
   size = 200,

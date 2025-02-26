@@ -1,28 +1,20 @@
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { TextractClient, AnalyzeDocumentCommand } from "@aws-sdk/client-textract";
-import { processNGData } from "../validation/ng/nigerian-passport";
-import countries from "../countries.json";
-import { BaseData, Data } from "../validation/data-interface";
 import { DetectFacesCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
+import { processNGData } from "@/app/validation/ng/nigerian-passport";
+import { Country, Data, FaceDetectResponse, TextractConfig, TextractResponse } from "@/app/helper/types/custom-types";
 
 const awsConfig = {
-    region: process.env.DEFAULT_AWS_REGION || 'us-east-1',
-    identityPoolId: process.env.USER_AWS_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
+    region: process.env.NEXT_PUBLIC_DEFAULT_AWS_REGION || 'us-east-1',
+    identityPoolId: process.env.NEXT_PUBLIC_USER_AWS_POOL_ID || 'us-east-1:8cb00b35-556e-445c-aa3d-0e8d7f3276de'
 };
 
-interface TextractConfig {
-    region: string;
-    identityPoolId: string;
-}
+const idsm_url = process.env.NEXT_PUBLIC_IDSM_BASE_URL || 'http://localhost:8080';
 
-interface TextractResponse {
-    data: Data;
-    rawText: string
-}
+let countriesCache: Country[] | null = null;
+let cacheTimestamp: number | null = null;
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hour in milliseconds
 
-interface FaceDetectResponse extends BaseData {
-    faceDetails: unknown;
-}
 
 const createTextractClient = (config: TextractConfig): TextractClient => {
     const credentialsProvider = fromCognitoIdentityPool({
@@ -45,16 +37,40 @@ const createRekognitionClient = (config: TextractConfig): RekognitionClient => {
         credentials: credentialsProvider
     });
 };
-
-const extractCountryData = (data: string): string => {
-    let countryName = '';
-    countries.forEach(country => {
-        if (data.toLowerCase().includes(country.name.toLowerCase())) {
-            countryName = country.name;
-            return;
-        }
+const fetchCountryData = async (): Promise<Country[]> => {
+    if (countriesCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+        return countriesCache;
     }
-    );
+
+    const response = await fetch(`${idsm_url}/v1/system/country`);
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const countries: Country[] = await response.json();
+
+    // Update cache
+    countriesCache = countries;
+    cacheTimestamp = Date.now();
+
+    return countries;
+};
+const extractCountryData = async (data: string): Promise<string> => {
+
+    let countryName = '';
+    try {
+        const countries = await fetchCountryData();
+        countries.forEach(country => {
+            if (data.toLowerCase().includes(country.name.toLowerCase())) {
+                countryName = country.name;
+                return;
+            }
+        }
+        );
+    } catch (error) {
+        console.error('Error:', error);
+    }
 
     return countryName;
 };
@@ -143,15 +159,16 @@ export const analyzeWithTextract = async (imageBytes: Uint8Array): Promise<Textr
                     fullText += block.Text + '\n';
                 }
             });
-            console.log('fullText:', fullText);
-            const country = extractCountryData(fullText);
+
+            const country = await extractCountryData(fullText);
             try {
                 switch (country) {
                     case 'Nigeria':
                         extractedData = processNGData(fullText);
                         break;
                     default:
-                        throw new Error('Unsupported document type');
+                        extractedData.status.message = 'Unsupported document type';
+                        //throw new Error('Unsupported document type');
                 }
             } catch (error) {
                 console.error('Error:', error);

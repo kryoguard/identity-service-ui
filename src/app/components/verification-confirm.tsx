@@ -1,8 +1,9 @@
 import { X } from 'lucide-react';
-import KryoLogo from '../KryoLogo';
-import SelfieImage from '../SelfieImage';
+import KryoLogo from '@/app/assets/kryoLogo';
+import SelfieImage from '@/app/assets/selfieImage';
+import { ComponentState } from '@/app/helper/types/custom-types';
 
-const VerificationConfirm = () => {
+const VerificationConfirm = ({setNextComponent}:{ setNextComponent: (component: ComponentState) => void }) => {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4">
             <div className="bg-white rounded-lg w-full max-w-md mx-auto my-4 p-4 sm:p-6">
@@ -48,7 +49,7 @@ const VerificationConfirm = () => {
                         {' '}to learn more about our personal data processing and cookie usage.
                     </p>
 
-                    <button className="w-full bg-gray-800 text-white py-3 rounded-md hover:bg-emerald-800 transition-colors">
+                    <button className="w-full bg-gray-800 text-white py-3 rounded-md hover:bg-emerald-800 transition-colors" onClick={() => setNextComponent('document')}>
                         Proceed!
                     </button>
 
