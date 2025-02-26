@@ -1,93 +1,30 @@
-"use client"
+// Home.tsx
+"use client";
 
-import React from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
 import VerificationStart from "@/app/components/verification-start";
 import VerificationConfirm from "@/app/components/verification-confirm";
 import DocumentCapture from "@/app/components/document-capture";
-import { ComponentState } from "@/app/helper/custom-types";
+import { useWebSocket } from "@/app/helper/hook/useWebSocket";
+import { ComponentState } from "@/app/helper/types/custom-types";
 
-const DocumentCaptureMemo = React.memo(DocumentCapture); // Explicit memoization
+const DocumentCaptureMemo = React.memo(DocumentCapture);
 
 export default function Home() {
-    const wsRef = useRef<WebSocket | null>(null);
-    const [currentComponent, setNextComponent] = useState<ComponentState>('start');
-    const [invalidToken, setInvalidToken] = useState(false);
-    const [wsReady, setWsReady] = useState(false);
-    const [isSelfie, setIsSelfie] = useState(false);
     const params = useParams();
-    const token = (params?.token as string) ?? '';
+    const token = (params?.token as string) ?? "";
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "wss://localhost:8443/video-stream";
+    const { ws, isReady, isInvalidToken, connect } = useWebSocket(wsUrl, token);
 
-    const ws_url = process.env.NEXT_PUBLIC_WS_URL || 'wss://localhost:8443/video-stream';
+    const wsRef = useRef<WebSocket | null>(null);
+    const [currentComponent, setNextComponent] = useState<ComponentState>("start");
+    const [isSelfie, setIsSelfie] = useState(false);
 
-    const connectWebSocket = useMemo(() => {
-        return () => {
-            return new Promise<void>((resolve, reject) => {
-                if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-                    console.debug('WebSocket already connected');
-                    resolve();
-                    return;
-                }
-
-                wsRef.current = new WebSocket(ws_url);
-
-                wsRef.current.onopen = () => {
-                    console.debug('WebSocket connected');
-                    if (token) {
-                        wsRef.current?.send(JSON.stringify({ action: 'authenticate', token }));
-                    } else {
-                        console.error('No token provided for authentication');
-                        wsRef.current?.close(1000, 'No token');
-                        reject(new Error('No token'));
-                    }
-                    resolve();
-                };
-
-                wsRef.current.onmessage = (event) => {
-                    console.debug('WebSocket raw message:', event.data);
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.status === 'success' && data.message === 'authenticated') {
-                            console.debug('WebSocket token authenticated');
-                            setWsReady(true);
-                            setInvalidToken(false);
-                        } else if(data.status === 'error' && data.message === 'authentication failed') {
-                            console.error('Invalid token provided');
-                            setInvalidToken(true);
-                        }
-                    } catch (error) {
-                        console.error('Error parsing WebSocket message:', error);
-                    }
-                };
-
-                wsRef.current.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    setWsReady(false);
-                    reject(error);
-                };
-
-                wsRef.current.onclose = (event) => {
-                    console.debug('WebSocket closed:', event.code, event.reason);
-                    setWsReady(false);
-                    if (!event.wasClean && !invalidToken) {
-                        console.debug('Attempting to reconnect...');
-                        setTimeout(() => connectWebSocket(), 3000);
-                    }
-                };
-            });
-        };
-    }, [ws_url, token]);
-
-    useEffect(() => {
-        connectWebSocket().catch(() => console.error('Initial WebSocket connection failed'));
-        return () => {
-            wsRef.current?.close(1000, 'Page closed');
-        };
-    }, [connectWebSocket]);
+    wsRef.current = ws; // Sync ref with hook state
 
     const renderContent = useMemo(() => {
-        if (!token || invalidToken) {
+        if (!token || isInvalidToken) {
             return (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4">
                     <div className="bg-white rounded-lg w-full max-w-4xl mx-auto my-4 p-4 sm:p-6">
@@ -104,20 +41,22 @@ export default function Home() {
 
         return (
             <div>
-                {currentComponent === 'start' && <VerificationStart token={token} setNextComponent={setNextComponent} />}
-                {currentComponent === 'confirm' && <VerificationConfirm setNextComponent={setNextComponent} />}
-                {currentComponent === 'document' && (
+                {currentComponent === "start" && (
+                    <VerificationStart token={token} setNextComponent={setNextComponent} />
+                )}
+                {currentComponent === "confirm" && <VerificationConfirm setNextComponent={setNextComponent} />}
+                {currentComponent === "document" && (
                     <DocumentCaptureMemo
                         wsRef={wsRef}
-                        wsReady={wsReady}
-                        connectWebSocket={connectWebSocket}
+                        wsReady={isReady}
+                        connectWebSocket={connect}
                         isSelfie={isSelfie}
                         setIsSelfie={setIsSelfie}
                     />
                 )}
             </div>
         );
-    }, [token, invalidToken, currentComponent, setNextComponent, wsRef, wsReady, connectWebSocket, isSelfie, setIsSelfie]);
+    }, [token, isInvalidToken, currentComponent, isReady, isSelfie]);
 
     return renderContent;
 }

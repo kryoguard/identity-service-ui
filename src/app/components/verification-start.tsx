@@ -1,19 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, Smartphone, CreditCard } from 'lucide-react';
-import QRCodeContainer from "../helper/qrContainer";
-import { ComponentState } from "../helper/custom-types";
 import Link from "next/link";
-import QRCodeGenerator from "../helper/qrCodeGenerator";
-import KryoLogo from "../assets/kryoLogo";
+import { X, Smartphone, CreditCard } from 'lucide-react';
+import QRCodeContainer from "@/app/helper/qrContainer";
+import { ComponentState, Country } from "@/app/helper/types/custom-types";
+import QRCodeGenerator from "@/app/helper/qrCodeGenerator";
+import KryoLogo from "@/app/assets/kryoLogo";
 
-interface Country {
-    id: string;
-    name: string;
-    phoneCode: string;
-    iso: string;
-}
 // interface Locale {
 //     language: string;
 //     timeZone: string;

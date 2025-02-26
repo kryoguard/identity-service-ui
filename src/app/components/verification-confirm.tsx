@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
-import KryoLogo from '../assets/kryoLogo';
-import SelfieImage from '../assets/selfieImage';
-import { ComponentState } from '../helper/custom-types';
+import KryoLogo from '@/app/assets/kryoLogo';
+import SelfieImage from '@/app/assets/selfieImage';
+import { ComponentState } from '@/app/helper/types/custom-types';
 
 const VerificationConfirm = ({setNextComponent}:{ setNextComponent: (component: ComponentState) => void }) => {
     return (

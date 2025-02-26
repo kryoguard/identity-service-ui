@@ -1,16 +1,5 @@
-// useWebSocket.ts
 import { useCallback, useEffect, useRef, useState } from "react";
-
-interface WebSocketState {
-    ws: WebSocket | null;
-    isReady: boolean;
-    isInvalidToken: boolean;
-}
-
-interface WebSocketMessage {
-    status: "success" | "error";
-    message: string;
-}
+import { WebSocketMessage, WebSocketState } from "@/app/helper/types/custom-types";
 
 export function useWebSocket(wsUrl: string, token: string): WebSocketState & {
     connect: () => Promise<void>;

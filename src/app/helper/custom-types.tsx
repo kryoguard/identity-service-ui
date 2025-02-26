@@ -1,1 +1,0 @@
-export type ComponentState = 'start' | 'confirm' | 'document';

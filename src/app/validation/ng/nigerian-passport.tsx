@@ -1,5 +1,5 @@
 import { DOCUMENT_CAMERA_FLOW } from "@/app/helper/camera-flow";
-import { Data, PassportData } from "../data-interface";
+import { Data, PassportData } from "@/app/helper/types/custom-types";
 
 const flow = DOCUMENT_CAMERA_FLOW["passport"];
 let data: Data = { status: { code: 0, message: "success", nextStep: flow["DOCUMENT_FRONT"] } };

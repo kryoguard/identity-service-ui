@@ -1,13 +1,9 @@
-import KryoLogo from "@/app/assets/kryoLogo";
+
 import { Check, X } from "lucide-react";
 import Image from "next/image";
+import KryoLogo from "@/app/assets/kryoLogo";
+import { InvalidDocumentProps } from "@/app/helper/types/custom-types";
 
-interface InvalidDocumentProps {
-    capturedImage: { src: string; width: number; height: number };
-    reset: () => void;
-    isSelfie: boolean;
-    erroMsg?: string;
-}
 
 const InvalidDocument: React.FC<InvalidDocumentProps> = ({ capturedImage, reset, isSelfie, erroMsg }) => {
     console.log("Error Message from InvalidDocument:", erroMsg);

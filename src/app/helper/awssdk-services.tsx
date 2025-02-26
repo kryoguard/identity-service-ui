@@ -1,8 +1,8 @@
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { TextractClient, AnalyzeDocumentCommand } from "@aws-sdk/client-textract";
-import { processNGData } from "../validation/ng/nigerian-passport";
-import { BaseData, Data } from "../validation/data-interface";
 import { DetectFacesCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
+import { processNGData } from "@/app/validation/ng/nigerian-passport";
+import { Country, Data, FaceDetectResponse, TextractConfig, TextractResponse } from "@/app/helper/types/custom-types";
 
 const awsConfig = {
     region: process.env.NEXT_PUBLIC_DEFAULT_AWS_REGION || 'us-east-1',
@@ -15,26 +15,6 @@ let countriesCache: Country[] | null = null;
 let cacheTimestamp: number | null = null;
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour in milliseconds
 
-interface Country {
-    id: string;
-    name: string;
-    phoneCode: string;
-    iso: string;
-}
-
-interface TextractConfig {
-    region: string;
-    identityPoolId: string;
-}
-
-interface TextractResponse {
-    data: Data;
-    rawText: string
-}
-
-interface FaceDetectResponse extends BaseData {
-    faceDetails: unknown;
-}
 
 const createTextractClient = (config: TextractConfig): TextractClient => {
     const credentialsProvider = fromCognitoIdentityPool({
