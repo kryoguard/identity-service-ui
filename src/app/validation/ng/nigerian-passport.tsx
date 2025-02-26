@@ -19,13 +19,19 @@ export const processNGData = (text: string): Data => {
 
             break;
         case "Drivers Licence":
-            throw new Error("Nigerian Driver's Licence not supported yet");
+            data.status.code = 1;
+            data.status.message = "Unsupported document type";
+            // throw new Error("Nigerian Driver's Licence not supported yet");
             break;
         case 'National ID':
-            throw new Error('Nigerian National ID not supported yet');
+            data.status.code = 1;
+            data.status.message = "Unsupported document type";
+            // throw new Error('Nigerian National ID not supported yet');
             break;
         default:
-            throw new Error('Nigerian Unsupported document type');
+            data.status.code = 1;
+            data.status.message = "Unsupported document type";
+            // throw new Error('Nigerian Unsupported document type');
             break;
     }
     return data;

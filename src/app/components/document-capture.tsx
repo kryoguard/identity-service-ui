@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import KryoLogo from '../KryoLogo';
 import { analyzeWithTextract, detectFace } from '../helper/awssdk-services';
 import InvalidDocument from './errors/invalid-document';
 import CameraUI from './camera-ui';
+import KryoLogo from '../assets/kryoLogo';
 
 const DocumentCapture: React.FC<{
     wsRef: React.RefObject<WebSocket | null>;
@@ -29,6 +29,11 @@ const DocumentCapture: React.FC<{
         const [isProcessing, setIsProcessing] = useState<boolean>(false);
         const [hasError, setHasError] = useState<boolean>(false);
         const [capturedImageStr, setCapturedImage] = useState<string>('');
+        const [capturedImageDetails, setCapturedImageDetails] = useState<{
+            src: string;
+            width: number;
+            height: number;
+        }>({ src: "", width: 0, height: 0 });
 
         const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
@@ -261,6 +266,8 @@ const DocumentCapture: React.FC<{
                 setCapturedImage(imageDataUrl); // Update state
                 console.debug('Captured image set:', imageDataUrl.substring(0, 50) + '...');
 
+                setCapturedImageDetails({ src: imageDataUrl, width: videoWidth, height: videoHeight });
+
                 const imageBytes = await new Promise<Uint8Array>((resolve, reject) => {
                     canvasRef.current?.toBlob(
                         (blob) => {
@@ -321,7 +328,7 @@ const DocumentCapture: React.FC<{
                 <div className="bg-white rounded-lg w-full max-w-4xl mx-auto my-4 p-4 sm:p-6">
                     {hasError ? (
                         <InvalidDocument
-                            capturedImage={capturedImageStr || capturedImageRef.current} // Fallback to ref
+                            capturedImage={capturedImageDetails} // Updated prop
                             reset={reset}
                             isSelfie={isSelfie}
                             erroMsg={error}

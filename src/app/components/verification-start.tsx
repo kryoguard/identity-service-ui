@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { X, Smartphone, CreditCard } from 'lucide-react';
-import KryoLogo from "../KryoLogo";
-import QRCodeGenerator from "../helper/QRCodeGenerator";
-import QRCodeContainer from "../helper/QRContainer";
+import QRCodeContainer from "../helper/qrContainer";
 import { ComponentState } from "../helper/custom-types";
 import Link from "next/link";
+import QRCodeGenerator from "../helper/qrCodeGenerator";
+import KryoLogo from "../assets/kryoLogo";
 
 interface Country {
     id: string;

@@ -187,7 +187,8 @@ export const analyzeWithTextract = async (imageBytes: Uint8Array): Promise<Textr
                         extractedData = processNGData(fullText);
                         break;
                     default:
-                        throw new Error('Unsupported document type');
+                        extractedData.status.message = 'Unsupported document type';
+                        //throw new Error('Unsupported document type');
                 }
             } catch (error) {
                 console.error('Error:', error);
