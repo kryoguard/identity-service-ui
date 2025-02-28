@@ -2,7 +2,7 @@
 
 const QRCodeContainer = ({ children }: { children: React.ReactNode }) => {
     return (
-        <div className="relative w-40 h-40 mx-auto">
+        <div className="relative w-60 h-60 mx-auto">
             {/* Top-left corner */}
             <div className="absolute -top-[2px] -left-[2px] w-10 h-10 rounded-tl-lg border-t-2 border-l-2 border-emerald-600" />
 

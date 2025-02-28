@@ -51,21 +51,21 @@ export async function processImage(
         img.src = image.src;
     });
 
-    if (!isSelfie) {
-        const result = await analyzeWithTextract(imageBytes);
-        console.debug("Textract result:", result);
-        if (result.data.status.code === 0 && result.data.status.nextStep === "SELFIE_CAPTURE") {
-            await toggleCamera();
-            return {};
-        } else {
-            return { error: result.data.status.message };
-        }
-    } else {
+    if (isSelfie) {
         const faceData = await detectFace(imageBytes);
         console.debug("Face detection result:", faceData);
         if (faceData.status.code !== 0) {
             return { error: faceData.status.message };
         }
         return {};
+    } else {//document scan
+        const result = await analyzeWithTextract(imageBytes);
+        console.debug("Document extract result:", result);
+        if (result.data.status.code === 0 && result.data.status.nextStep === "SELFIE_CAPTURE") {
+            await toggleCamera();
+            return {};
+        } else {
+            return { error: result.data.status.message };
+        }
     }
 }

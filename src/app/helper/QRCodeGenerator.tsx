@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 
 const QRCodeGenerator = ({
   value = 'https://example.com',
-  size = 100,
+  size = 200,
   bgColor = '#ffffff',
   fgColor = '#000000',
   marginSize = 0,
@@ -68,10 +68,11 @@ const QRCodeGenerator = ({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="w-full h-full flex items-center justify-center text-gray-500">
       <div className="p-2 bg-white rounded-lg shadow-lg">
         {isLoading ? (
-          <div className="animate-pulse bg-gray-200" style={{ width: size, height: size }} />
+          // <div className="animate-pulse bg-gray-200" style={{ width: size, height: size }} />
+          <p className="text-gray-500 mt-2">loading...</p>
         ) : (
           <QRCodeSVG
             value={shortenedUrl}
@@ -82,9 +83,6 @@ const QRCodeGenerator = ({
           />
         )}
       </div>
-      {isLoading && (
-        <p className="text-sm text-gray-500 mt-2">loading...</p>
-      )}
     </div>
   );
 };

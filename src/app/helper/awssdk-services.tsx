@@ -1,8 +1,8 @@
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { TextractClient, AnalyzeDocumentCommand } from "@aws-sdk/client-textract";
 import { DetectFacesCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
-import { processNGData } from "@/app/validation/ng/nigerian-passport";
 import { Country, Data, FaceDetectResponse, TextractConfig, TextractResponse } from "@/app/helper/types/custom-types";
+import { processNGData } from "@/app/validation/ng/processNGData";
 
 const awsConfig = {
     region: process.env.NEXT_PUBLIC_DEFAULT_AWS_REGION || 'us-east-1',
